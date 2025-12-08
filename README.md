@@ -9,7 +9,7 @@
 ![Express](https://img.shields.io/badge/Express-5-black?style=for-the-badge&logo=express)
 ![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)
 
-**Un dashboard moderne et complet pour la Freebox Ultra**
+**Un dashboard moderne et complet pour la Freebox Ultra, Pop & Delta**
 
 [Fonctionnalites](#fonctionnalites) | [Installation](#installation) | [Configuration](#configuration) | [Utilisation](#utilisation)
 
@@ -17,19 +17,34 @@
 
 ---
 
+![Dashboard Principal](img-capture/02.png)
+
 > **⚠️ Version BETA** - Ce projet est en cours de developpement. Des bugs peuvent etre presents et certaines fonctionnalites peuvent ne pas fonctionner comme prevu. N'hesitez pas a [signaler les problemes](../../issues) rencontres.
 
 ## Apercu
 
-Freebox OS Ultra Dashboard est une interface web alternative pour gerer votre Freebox Ultra. Construit avec React 19 et Express 5, il offre une experience utilisateur fluide et moderne avec des donnees en temps reel.
+Freebox OS Ultra Dashboard est une interface web alternative pour gerer votre Freebox Ultra, Pop ou Delta. Construit avec React 19 et Express 5, il offre une experience utilisateur fluide et moderne avec des donnees en temps reel.
 
 ### Captures d'ecran
 
 <details>
 <summary>Voir les captures d'ecran</summary>
 
-> *Mettre capture une fois que je les ai*
-
+![Screenshot 01](img-capture/02.png)
+![Screenshot 02](img-capture/01.png)
+![Screenshot 03](img-capture/03.png)
+![Screenshot 04](img-capture/04.png)
+![Screenshot 05](img-capture/05.png)
+![Screenshot 06](img-capture/06.png)
+![Screenshot 07](img-capture/07.png)
+![Screenshot 08](img-capture/08.png)
+![Screenshot 09](img-capture/09.png)
+![Screenshot 10](img-capture/10.png)
+![Screenshot 11](img-capture/11.png)
+![Screenshot 12](img-capture/12.png)
+![Screenshot 13](img-capture/13.png)
+![Screenshot 14](img-capture/14.png)
+![Screenshot 15](img-capture/15.png)
 </details>
 
 ## Fonctionnalites
@@ -335,6 +350,6 @@ Le design de ce dashboard a ete realise par **[@powl_d](https://x.com/powl_d)**.
 
 <div align="center">
 
-**Fait avec coeur pour les utilisateurs de Freebox Ultra**
+**Fait avec amour pour les utilisateurs de Freebox Ultra**
 
 </div>
