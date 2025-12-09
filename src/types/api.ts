@@ -37,6 +37,12 @@ export interface RegistrationStatus {
 }
 
 // System types
+export interface RebootSchedule {
+  enabled: boolean;
+  days: number[]; // 0-6 (Sun-Sat)
+  time: string; // "HH:MM"
+}
+
 export interface SystemInfo {
   firmware_version: string;
   mac: string;

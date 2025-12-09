@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { freeboxApi } from '../services/freeboxApi.js';
+import { rebootScheduler } from '../services/scheduler.js';
 import { asyncHandler } from '../middleware/errorHandler.js';
 
 const router = Router();
@@ -40,6 +41,18 @@ router.get('/', asyncHandler(async (_req, res) => {
   }
 
   res.json(systemResult);
+}));
+
+// GET /api/system/reboot/schedule - Get reboot schedule
+router.get('/reboot/schedule', asyncHandler(async (_req, res) => {
+  const schedule = rebootScheduler.getSchedule();
+  res.json({ success: true, result: schedule });
+}));
+
+// POST /api/system/reboot/schedule - Update reboot schedule
+router.post('/reboot/schedule', asyncHandler(async (req, res) => {
+  const schedule = rebootScheduler.updateSchedule(req.body);
+  res.json({ success: true, result: schedule });
 }));
 
 // POST /api/system/reboot - Reboot Freebox

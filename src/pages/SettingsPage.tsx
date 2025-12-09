@@ -21,14 +21,17 @@ import {
   ExternalLink,
   Plus,
   Trash2,
-  Edit2
+  Edit2,
+  Calendar
 } from 'lucide-react';
 import { api } from '../api/client';
 import { API_ROUTES } from '../utils/constants';
 import { ParentalControlModal } from '../components/modals/ParentalControlModal';
 import { PortForwardingModal } from '../components/modals/PortForwardingModal';
 import { VpnModal } from '../components/modals/VpnModal';
+import { RebootScheduleModal } from '../components/modals/RebootScheduleModal';
 import { useLanStore } from '../stores/lanStore';
+import { useSystemStore } from '../stores/systemStore';
 
 interface SettingsPageProps {
   onBack: () => void;
@@ -97,9 +100,11 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBack }) => {
   const [showParentalModal, setShowParentalModal] = useState(false);
   const [showFirewallModal, setShowFirewallModal] = useState(false);
   const [showVpnModal, setShowVpnModal] = useState(false);
+  const [showRebootScheduleModal, setShowRebootScheduleModal] = useState(false);
 
   // Get devices from LAN store for parental control
   const { devices } = useLanStore();
+  const { reboot } = useSystemStore();
 
   // Connection settings
   const [connectionConfig, setConnectionConfig] = useState<{
@@ -439,6 +444,20 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBack }) => {
       setError('Erreur lors de la sauvegarde');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleReboot = async () => {
+    if (confirm('Êtes-vous sûr de vouloir redémarrer la Freebox ?')) {
+      setIsLoading(true);
+      const success = await reboot();
+      setIsLoading(false);
+      
+      if (success) {
+        showSuccess('Redémarrage en cours...');
+      } else {
+        setError('Échec du redémarrage');
+      }
     }
   };
 
@@ -974,10 +993,18 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBack }) => {
             <Section title="Actions système" icon={Power}>
               <div className="py-4 space-y-3">
                 <button
+                  onClick={handleReboot}
                   className="w-full flex items-center justify-between px-4 py-3 bg-[#1a1a1a] hover:bg-[#252525] border border-gray-700 rounded-lg transition-colors"
                 >
                   <span className="text-sm text-white">Redémarrer la Freebox</span>
                   <Power size={16} className="text-orange-400" />
+                </button>
+                <button
+                  onClick={() => setShowRebootScheduleModal(true)}
+                  className="w-full flex items-center justify-between px-4 py-3 bg-[#1a1a1a] hover:bg-[#252525] border border-gray-700 rounded-lg transition-colors"
+                >
+                  <span className="text-sm text-white">Programmer le redémarrage</span>
+                  <Calendar size={16} className="text-blue-400" />
                 </button>
                 <p className="text-xs text-gray-600 px-1">
                   Le redémarrage prend environ 2-3 minutes. Toutes les connexions seront interrompues.
@@ -1055,6 +1082,12 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBack }) => {
       <VpnModal
         isOpen={showVpnModal}
         onClose={() => setShowVpnModal(false)}
+      />
+
+      {/* Reboot Schedule Modal */}
+      <RebootScheduleModal
+        isOpen={showRebootScheduleModal}
+        onClose={() => setShowRebootScheduleModal(false)}
       />
 
       {/* DHCP Static Lease Modal */}
