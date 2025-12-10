@@ -58,4 +58,10 @@ router.get('/logs', asyncHandler(async (_req, res) => {
   res.json(result);
 }));
 
+// PUT /api/connection/config - Update connection config
+router.put('/config', asyncHandler(async (req, res) => {
+  const result = await freeboxApi.updateConnectionConfig(req.body);
+  res.json(result);
+}));
+
 export default router;

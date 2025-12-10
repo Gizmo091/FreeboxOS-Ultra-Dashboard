@@ -12,6 +12,7 @@ import logoUltra from '../../icons/logo_ultra.svg';
 import { StatusBadge } from '../ui/Badge';
 import { formatSpeed, formatTemperature } from '../../utils/constants';
 import { useCapabilitiesStore } from '../../stores/capabilitiesStore';
+import { useFavicon } from '../../hooks/useFavicon';
 import type { SystemInfo, ConnectionStatus } from '../../types/api';
 
 // Map model to display name
@@ -56,6 +57,11 @@ const getCpuTemp = (info: SystemInfo | null | undefined): number | null => {
 export const Header: React.FC<HeaderProps> = ({ systemInfo, connectionStatus }) => {
   // Get capabilities for model name (respects mock mode)
   const { getModel } = useCapabilitiesStore();
+
+  // Set favicon dynamically based on Freebox model
+  // TODO: Add different logos for other models (delta, pop, revolution)
+  // invert=true to make white SVG visible on light browser tab backgrounds
+  useFavicon(logoUltra, true);
 
   // Get CPU temperature (works for all Freebox models)
   const cpuTemp = getCpuTemp(systemInfo);

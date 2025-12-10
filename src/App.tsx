@@ -25,6 +25,7 @@ import {
   useVmStore,
   useHistoryStore
 } from './stores';
+import { startPermissionsRefresh, stopPermissionsRefresh } from './stores/authStore';
 import { useCapabilitiesStore } from './stores/capabilitiesStore';
 import { POLLING_INTERVALS, formatSpeed } from './utils/constants';
 import {
@@ -79,6 +80,16 @@ const App: React.FC = () => {
   useEffect(() => {
     checkAuth();
   }, [checkAuth]);
+
+  // Start/stop periodic permissions refresh based on login state
+  useEffect(() => {
+    if (isLoggedIn) {
+      startPermissionsRefresh();
+    } else {
+      stopPermissionsRefresh();
+    }
+    return () => stopPermissionsRefresh();
+  }, [isLoggedIn]);
 
   // Polling when logged in
   usePolling(fetchConnectionStatus, {
