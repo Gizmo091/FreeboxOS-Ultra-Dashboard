@@ -37,6 +37,11 @@ export interface RegistrationStatus {
 }
 
 // System types
+export interface RebootSchedule {
+  enabled: boolean;
+  mapping: Record<number, string>; // Key: day (0-6), Value: "HH:MM"
+}
+
 export interface SystemInfo {
   firmware_version: string;
   mac: string;
