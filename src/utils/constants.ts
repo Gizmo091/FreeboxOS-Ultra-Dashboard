@@ -54,6 +54,7 @@ export const API_ROUTES = {
   AUTH_CHECK: '/api/auth/check',
   AUTH_SET_URL: '/api/auth/set-url',
   AUTH_GET_URL: '/api/auth/url',
+  AUTH_RESET: '/api/auth/reset',
 
   // System
   SYSTEM: '/api/system',
@@ -161,24 +162,31 @@ export const formatBytes = (bytes: number, decimals = 2): string => {
 
 export const formatSpeed = (bytesPerSec: number): string => {
   // Convert bytes/s to bits/s (multiply by 8) for network speed display
-  // Network speeds are measured in bits (Mbps, Gbps), not bytes (MB/s, GB/s)
+  // Network speeds are measured in bits, using Freebox format: kb/s, Mb/s, Gb/s
   const bitsPerSec = bytesPerSec * 8;
 
-  if (bitsPerSec === 0) return '0 bps';
+  if (bitsPerSec === 0) return '0 b/s';
 
   // Use decimal units (1000) for network speeds, not binary (1024)
+  // Freebox uses lowercase 'k' and 'b/s' format
   const k = 1000;
-  const sizes = ['bps', 'Kbps', 'Mbps', 'Gbps'];
+  const sizes = ['b/s', 'kb/s', 'Mb/s', 'Gb/s'];
   const i = Math.floor(Math.log(bitsPerSec) / Math.log(k));
-  return parseFloat((bitsPerSec / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+  const value = bitsPerSec / Math.pow(k, i);
+
+  // Use 1 decimal for values < 10, 0 decimals otherwise
+  const decimals = value < 10 ? 1 : 0;
+  return parseFloat(value.toFixed(decimals)) + ' ' + sizes[i];
 };
 
 export const formatBitrate = (bitsPerSec: number): string => {
-  if (bitsPerSec === 0) return '0 bps';
+  if (bitsPerSec === 0) return '0 b/s';
   const k = 1000;
-  const sizes = ['bps', 'Kbps', 'Mbps', 'Gbps'];
+  const sizes = ['b/s', 'kb/s', 'Mb/s', 'Gb/s'];
   const i = Math.floor(Math.log(bitsPerSec) / Math.log(k));
-  return parseFloat((bitsPerSec / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+  const value = bitsPerSec / Math.pow(k, i);
+  const decimals = value < 10 ? 1 : 0;
+  return parseFloat(value.toFixed(decimals)) + ' ' + sizes[i];
 };
 
 export const formatDuration = (seconds: number): string => {

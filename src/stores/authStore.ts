@@ -27,6 +27,7 @@ interface AuthState {
   refreshPermissions: () => Promise<void>;
   updatePermissionFromError: (missingRight: string) => void;
   handleSessionExpired: () => void;
+  resetToken: () => Promise<void>;
 }
 
 // Permissions refresh interval (1 minute)
@@ -259,6 +260,28 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
       // Attempt automatic re-login
       get().login();
+    }
+  },
+
+  // Reset token (delete on server and locally) - for re-registration
+  resetToken: async () => {
+    set({ isLoading: true, error: null });
+    try {
+      await api.post(API_ROUTES.AUTH_RESET);
+      set({
+        isRegistered: false,
+        isLoggedIn: false,
+        permissions: {},
+        trackId: null,
+        registrationStatus: null,
+        isLoading: false,
+        error: null
+      });
+      // Clear capabilities
+      useCapabilitiesStore.getState().clearCapabilities();
+      console.log('[Auth] Token reset successful');
+    } catch {
+      set({ isLoading: false, error: 'Failed to reset token' });
     }
   }
 }));

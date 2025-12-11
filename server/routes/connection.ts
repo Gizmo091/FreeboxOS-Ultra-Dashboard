@@ -52,6 +52,18 @@ router.get('/temp-history', asyncHandler(async (req, res) => {
   const dateEnd = end ? parseInt(end as string, 10) : undefined;
 
   const result = await freeboxApi.getRrdData('temp', dateStart, dateEnd);
+
+  // Log for debugging temperature fields by model
+  const rrdResult = result.result as { data?: unknown[] } | undefined;
+  if (result.success && rrdResult?.data && rrdResult.data.length > 0) {
+    const sample = rrdResult.data[0] as Record<string, unknown>;
+    console.log('[RRD] Temp history - points:', rrdResult.data.length);
+    console.log('[RRD] Temp history - sample keys:', Object.keys(sample));
+    console.log('[RRD] Temp history - sample values:', JSON.stringify(sample));
+  } else {
+    console.log('[RRD] Temp history failed or empty:', result.success, result.msg || (result as Record<string, unknown>).error_code);
+  }
+
   res.json(result);
 }));
 

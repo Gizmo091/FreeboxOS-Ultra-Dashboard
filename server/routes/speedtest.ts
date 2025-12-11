@@ -28,7 +28,8 @@ interface ConnectionStatus {
 }
 
 // Parse ping output to extract latency stats
-function parsePingOutput(output: string): { avg: number; mdev: number; loss: number } {
+// Returns avg latency, jitter (mdev), and packet loss
+function parsePingOutput(output: string, times?: number[]): { avg: number; mdev: number; loss: number } {
   try {
     // Initialize variables
     let avg = 0;
@@ -57,13 +58,38 @@ function parsePingOutput(output: string): { avg: number; mdev: number; loss: num
       const lossMatchWin = output.match(/\((\d+)%\s*(?:perte|loss)\)/i);
       loss = lossMatchWin ? parseFloat(lossMatchWin[1]) : 0;
 
+      // Match average from Windows ping (French: "Moyenne", English: "Average")
       const avgMatch = output.match(/(?:Moyenne|Average)\s*=\s*(\d+)ms/i);
 
       if (avgMatch) {
         avg = parseFloat(avgMatch[1]);
-        mdev = 0; // Windows ping doesn't provide jitter, use 0
       } else {
         loss = 100;
+      }
+
+      // Windows doesn't provide jitter directly, so we calculate it from individual ping times
+      // Extract all "time=Xms" values and calculate standard deviation
+      if (times && times.length > 1) {
+        const mean = times.reduce((a, b) => a + b, 0) / times.length;
+        const squaredDiffs = times.map(t => Math.pow(t - mean, 2));
+        const avgSquaredDiff = squaredDiffs.reduce((a, b) => a + b, 0) / squaredDiffs.length;
+        mdev = Math.sqrt(avgSquaredDiff);
+      } else {
+        // Try to extract individual times from output
+        const timeMatches = output.match(/(?:temps|time)[=<](\d+)ms/gi);
+        if (timeMatches && timeMatches.length > 1) {
+          const extractedTimes = timeMatches.map(m => {
+            const numMatch = m.match(/(\d+)/);
+            return numMatch ? parseFloat(numMatch[1]) : 0;
+          }).filter(t => t > 0);
+
+          if (extractedTimes.length > 1) {
+            const mean = extractedTimes.reduce((a, b) => a + b, 0) / extractedTimes.length;
+            const squaredDiffs = extractedTimes.map(t => Math.pow(t - mean, 2));
+            const avgSquaredDiff = squaredDiffs.reduce((a, b) => a + b, 0) / squaredDiffs.length;
+            mdev = Math.sqrt(avgSquaredDiff);
+          }
+        }
       }
     }
 
@@ -169,7 +195,7 @@ router.post('/run', asyncHandler(async (req, res) => {
     };
 
     try {
-      const { stdout } = await execAsync(`ping -c 10 ${pingTarget}`, { timeout: 15000 });
+      const { stdout } = await execAsync(`ping ${PING_FLAG} 10 ${pingTarget}`, { timeout: 15000 });
       const stats = parsePingOutput(stdout);
       pingResult = {
         target: pingTarget,

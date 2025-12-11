@@ -1,10 +1,23 @@
 import { useEffect, useRef, useCallback, useState } from 'react';
 import { useConnectionStore } from '../stores/connectionStore';
+import { useSystemStore } from '../stores/systemStore';
 import type { ConnectionStatus } from '../types/api';
 
+interface SystemStatusData {
+  temp_cpu0?: number;
+  temp_cpu1?: number;
+  temp_cpu2?: number;
+  temp_cpu3?: number;
+  temp_cpum?: number;
+  temp_cpub?: number;
+  temp_sw?: number;
+  fan_rpm?: number;
+  uptime_val?: number;
+}
+
 interface WebSocketMessage {
-  type: 'connection_status';
-  data: ConnectionStatus;
+  type: 'connection_status' | 'system_status';
+  data: ConnectionStatus | SystemStatusData;
 }
 
 interface UseConnectionWebSocketOptions {
@@ -47,7 +60,7 @@ export function useConnectionWebSocket(options: UseConnectionWebSocketOptions = 
         const message: WebSocketMessage = JSON.parse(event.data);
 
         if (message.type === 'connection_status' && message.data) {
-          const status = message.data;
+          const status = message.data as ConnectionStatus;
 
           // Update the store directly
           useConnectionStore.setState((state) => {
@@ -65,6 +78,56 @@ export function useConnectionWebSocket(options: UseConnectionWebSocketOptions = 
               status,
               error: null,
               history: [...state.history.slice(-59), newPoint]
+            };
+          });
+        } else if (message.type === 'system_status' && message.data) {
+          const systemData = message.data as SystemStatusData;
+
+          // Update system store with real-time data
+          useSystemStore.setState((state) => {
+            // Calculate CPU temp: average of Ultra cores or use legacy cpum
+            let cpuM: number | undefined;
+            if (systemData.temp_cpu0 != null) {
+              // Ultra: average of 4 CPU cores
+              const temps = [
+                systemData.temp_cpu0,
+                systemData.temp_cpu1,
+                systemData.temp_cpu2,
+                systemData.temp_cpu3
+              ].filter((t): t is number => t != null);
+              cpuM = temps.length > 0 ? Math.round(temps.reduce((a, b) => a + b, 0) / temps.length) : undefined;
+            } else {
+              cpuM = systemData.temp_cpum;
+            }
+
+            const newPoint = {
+              time: new Date().toLocaleTimeString('fr-FR', {
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'
+              }),
+              cpuM,
+              cpuB: systemData.temp_cpub,
+              sw: systemData.temp_sw
+            };
+
+            // Update info with latest values
+            const updatedInfo = state.info ? {
+              ...state.info,
+              temp_cpu0: systemData.temp_cpu0,
+              temp_cpu1: systemData.temp_cpu1,
+              temp_cpu2: systemData.temp_cpu2,
+              temp_cpu3: systemData.temp_cpu3,
+              temp_cpum: systemData.temp_cpum ?? cpuM,
+              temp_cpub: systemData.temp_cpub,
+              temp_sw: systemData.temp_sw,
+              fan_rpm: systemData.fan_rpm,
+              uptime_val: systemData.uptime_val ?? state.info.uptime_val
+            } : null;
+
+            return {
+              info: updatedInfo,
+              temperatureHistory: [...state.temperatureHistory.slice(-59), newPoint]
             };
           });
         }

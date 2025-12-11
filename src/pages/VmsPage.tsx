@@ -143,22 +143,25 @@ const VmCard: React.FC<{
       <div className="p-4 space-y-3">
         <ResourceBar
           label="CPU"
-          value={vm.vcpus}
-          max={vm.vcpus}
-          unit=" vCPU"
+          value={isRunning ? Math.round(vm.cpuUsage) : 0}
+          max={100}
+          unit="%"
           color="bg-blue-500"
         />
+        <div className="flex items-center gap-2 text-xs text-gray-500 -mt-1 mb-2 pl-12">
+          {vm.vcpus} vCPU alloués
+        </div>
         <ResourceBar
           label="RAM"
-          value={Math.round(vm.memory / (1024 * 1024 * 1024))}
-          max={Math.round(vm.memory / (1024 * 1024 * 1024))}
+          value={isRunning ? Math.round(vm.ramUsage * 10) / 10 : 0}
+          max={Math.round(vm.ramTotal * 10) / 10}
           unit=" Go"
           color="bg-emerald-500"
         />
         <ResourceBar
           label="Disque"
-          value={Math.round(vm.disk_size / (1024 * 1024 * 1024))}
-          max={Math.round(vm.disk_size / (1024 * 1024 * 1024))}
+          value={Math.round(vm.diskUsage * 10) / 10}
+          max={vm.diskTotal > 0 ? Math.round(vm.diskTotal * 10) / 10 : Math.round(vm.diskUsage * 10) / 10}
           unit=" Go"
           color="bg-cyan-500"
         />

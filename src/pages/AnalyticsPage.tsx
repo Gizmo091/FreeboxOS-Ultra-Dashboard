@@ -68,15 +68,41 @@ export const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ onBack }) => {
   const { getHistoryForDisplay } = useUptimeStore();
   const { capabilities } = useCapabilitiesStore();
 
+  // Sensor name normalization (clean up API names for display)
+  const normalizeSensorName = (id: string, name: string): string => {
+    // Clean up common prefixes from API
+    const cleaned = name
+      .replace(/^Température\s+/i, '')
+      .replace(/^Temperature\s+/i, '')
+      .trim();
+
+    // Map specific IDs to short display names
+    const nameMap: Record<string, string> = {
+      'temp_cpu0': 'CPU 0',
+      'temp_cpu1': 'CPU 1',
+      'temp_cpu2': 'CPU 2',
+      'temp_cpu3': 'CPU 3',
+      'temp_cpum': 'CPU',
+      'temp_cpub': 'CPU Box',
+      'temp_sw': 'Switch',
+      'temp_hdd': 'Disque',
+      'temp_hdd0': 'Disque 1',
+      'temp_hdd1': 'Disque 2'
+    };
+
+    return nameMap[id] || cleaned || id;
+  };
+
   // Helper to get CPU sensors (API v8+ format)
   const getCpuSensors = (): SystemSensor[] => {
     if (!info) return [];
 
-    // API v8+: sensors array format
+    // API v8+: sensors array format (already normalized by backend)
     if (info.sensors && Array.isArray(info.sensors)) {
       return info.sensors
         .filter(s => s.id.startsWith('temp_cpu') || s.id.startsWith('cpu'))
-        .sort((a, b) => a.name.localeCompare(b.name));
+        .map(s => ({ ...s, name: normalizeSensorName(s.id, s.name) }))
+        .sort((a, b) => a.id.localeCompare(b.id)); // Sort by ID for consistent order
     }
 
     // Legacy format: build sensors array from individual fields
@@ -85,10 +111,10 @@ export const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ onBack }) => {
     if (info.temp_cpu1 != null) sensors.push({ id: 'temp_cpu1', name: 'CPU 1', value: info.temp_cpu1 });
     if (info.temp_cpu2 != null) sensors.push({ id: 'temp_cpu2', name: 'CPU 2', value: info.temp_cpu2 });
     if (info.temp_cpu3 != null) sensors.push({ id: 'temp_cpu3', name: 'CPU 3', value: info.temp_cpu3 });
-    if (info.temp_cpum != null) sensors.push({ id: 'temp_cpum', name: 'CPU Main', value: info.temp_cpum });
+    if (info.temp_cpum != null) sensors.push({ id: 'temp_cpum', name: 'CPU', value: info.temp_cpum });
     if (info.temp_cpub != null) sensors.push({ id: 'temp_cpub', name: 'CPU Box', value: info.temp_cpub });
 
-    return sensors.sort((a, b) => a.name.localeCompare(b.name));
+    return sensors.sort((a, b) => a.id.localeCompare(b.id));
   };
 
   // Helper to get HDD sensors (API v8+ format)
@@ -99,7 +125,8 @@ export const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ onBack }) => {
     if (info.sensors && Array.isArray(info.sensors)) {
       return info.sensors
         .filter(s => s.id.startsWith('temp_hdd') || s.id.includes('disk'))
-        .sort((a, b) => a.name.localeCompare(b.name));
+        .map(s => ({ ...s, name: normalizeSensorName(s.id, s.name) }))
+        .sort((a, b) => a.id.localeCompare(b.id));
     }
 
     return [];
@@ -113,7 +140,8 @@ export const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ onBack }) => {
     if (info.sensors && Array.isArray(info.sensors)) {
       return info.sensors
         .filter(s => !s.id.startsWith('temp_cpu') && !s.id.startsWith('cpu') && !s.id.startsWith('temp_hdd') && !s.id.includes('disk'))
-        .sort((a, b) => a.name.localeCompare(b.name));
+        .map(s => ({ ...s, name: normalizeSensorName(s.id, s.name) }))
+        .sort((a, b) => a.id.localeCompare(b.id));
     }
 
     // Legacy format
@@ -123,13 +151,30 @@ export const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ onBack }) => {
     return sensors;
   };
 
+  // Fan name normalization
+  const normalizeFanName = (id: string, name: string): string => {
+    const nameMap: Record<string, string> = {
+      'fan0_speed': 'Ventilateur 1',
+      'fan1_speed': 'Ventilateur 2',
+      'fan0': 'Ventilateur 1',
+      'fan1': 'Ventilateur 2',
+      'main': 'Ventilateur',
+      'fan': 'Ventilateur',
+      'fan_rpm': 'Ventilateur'
+    };
+
+    return nameMap[id] || name || id;
+  };
+
   // Helper to get fans (API v8+ format)
   const getFans = (): SystemFan[] => {
     if (!info) return [];
 
-    // API v8+: fans array
+    // API v8+: fans array (normalize names)
     if (info.fans && Array.isArray(info.fans)) {
-      return info.fans.sort((a, b) => a.name.localeCompare(b.name));
+      return info.fans
+        .map(f => ({ ...f, name: normalizeFanName(f.id, f.name) }))
+        .sort((a, b) => a.id.localeCompare(b.id));
     }
 
     // Legacy format: single fan_rpm field
@@ -272,10 +317,24 @@ export const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ onBack }) => {
     }));
   }, [uptimeHistory]);
 
-  const formatBytes = (kb: number): string => {
-    if (kb >= 1024 * 1024) return `${(kb / (1024 * 1024)).toFixed(2)} GB/s`;
-    if (kb >= 1024) return `${(kb / 1024).toFixed(2)} MB/s`;
-    return `${kb} KB/s`;
+  // Format KB/s to Freebox-style speed units (kb/s, Mb/s, Gb/s)
+  // Input is in KB/s (kilobytes), we convert to bits for display
+  const formatKBSpeed = (kbPerSec: number): string => {
+    // Convert KB/s to kb/s (kilobits): KB * 8 = kb
+    const kbitsPerSec = kbPerSec * 8;
+
+    if (kbitsPerSec === 0) return '0 kb/s';
+
+    const k = 1000;
+    const sizes = ['kb/s', 'Mb/s', 'Gb/s'];
+
+    // Start at kb/s level since input is already in KB
+    if (kbitsPerSec < k) return `${Math.round(kbitsPerSec)} kb/s`;
+
+    const i = Math.floor(Math.log(kbitsPerSec) / Math.log(k));
+    const value = kbitsPerSec / Math.pow(k, i);
+    const decimals = value < 10 ? 1 : 0;
+    return `${value.toFixed(decimals)} ${sizes[Math.min(i, sizes.length - 1)]}`;
   };
 
   const tabs = [
@@ -462,7 +521,7 @@ export const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ onBack }) => {
                     <YAxis
                       stroke="#6b7280"
                       tick={{ fill: '#6b7280', fontSize: 11 }}
-                      tickFormatter={(value) => formatBytes(value).split(' ')[0]}
+                      tickFormatter={(value) => formatKBSpeed(value).split(' ')[0]}
                     />
                     <Tooltip
                       contentStyle={{ backgroundColor: '#1f2937', border: '1px solid #374151', borderRadius: '8px' }}
@@ -471,7 +530,7 @@ export const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ onBack }) => {
                         const label = props.dataKey === 'download' ? 'Descendant' : 'Montant';
                         const color = props.dataKey === 'download' ? COLORS.blue : COLORS.green;
                         return [
-                          <span style={{ color }}>{formatBytes(value)}</span>,
+                          <span style={{ color }}>{formatKBSpeed(value)}</span>,
                           label
                         ];
                       }}
@@ -512,8 +571,8 @@ export const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ onBack }) => {
       {/* Temperature Tab */}
       {activeTab === 'temperature' && (
         <div className="space-y-6">
-          {/* Current Temps - Dynamic grid based on available sensors */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {/* Stats summary cards - always 4 columns on desktop */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             {/* CPU Temperature */}
             <div className="bg-[#121212] rounded-xl p-4 border border-gray-800">
               <div className="flex items-center gap-2 text-gray-500 text-sm mb-2">
@@ -530,23 +589,19 @@ export const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ onBack }) => {
               )}
             </div>
 
-            {/* HDD Temperature */}
-            {hddSensors.length > 0 && (
-              <div className="bg-[#121212] rounded-xl p-4 border border-gray-800">
-                <div className="flex items-center gap-2 text-gray-500 text-sm mb-2">
-                  <HardDrive className="w-4 h-4 text-blue-500" />
-                  Disque {hddSensors.length > 1 ? '(Moyenne)' : ''}
-                </div>
-                <div className="text-2xl font-bold text-white">
-                  {hddAvgTemp != null ? `${hddAvgTemp}°C` : 'N/A'}
-                </div>
-                {hddSensors.length > 1 && (
-                  <div className="text-xs text-gray-500 mt-1">
-                    {hddSensors.length} disques
-                  </div>
-                )}
+            {/* Max CPU Temp */}
+            <div className="bg-[#121212] rounded-xl p-4 border border-gray-800">
+              <div className="flex items-center gap-2 text-gray-500 text-sm mb-2">
+                <Thermometer className="w-4 h-4 text-red-500" />
+                CPU Max
               </div>
-            )}
+              <div className="text-2xl font-bold text-white">
+                {cpuSensors.length > 0 ? `${Math.max(...cpuSensors.map(s => s.value))}°C` : 'N/A'}
+              </div>
+              <div className="text-xs text-gray-500 mt-1">
+                Pic actuel
+              </div>
+            </div>
 
             {/* Fan Speed */}
             <div className="bg-[#121212] rounded-xl p-4 border border-gray-800">
@@ -564,20 +619,40 @@ export const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ onBack }) => {
               )}
             </div>
 
-            {/* Max CPU Temp */}
-            <div className="bg-[#121212] rounded-xl p-4 border border-gray-800">
-              <div className="flex items-center gap-2 text-gray-500 text-sm mb-2">
-                <Thermometer className="w-4 h-4 text-red-500" />
-                CPU Max
+            {/* HDD Temperature or placeholder */}
+            {hddSensors.length > 0 ? (
+              <div className="bg-[#121212] rounded-xl p-4 border border-gray-800">
+                <div className="flex items-center gap-2 text-gray-500 text-sm mb-2">
+                  <HardDrive className="w-4 h-4 text-blue-500" />
+                  Disque {hddSensors.length > 1 ? '(Moyenne)' : ''}
+                </div>
+                <div className="text-2xl font-bold text-white">
+                  {hddAvgTemp != null ? `${hddAvgTemp}°C` : 'N/A'}
+                </div>
+                {hddSensors.length > 1 && (
+                  <div className="text-xs text-gray-500 mt-1">
+                    {hddSensors.length} disques
+                  </div>
+                )}
               </div>
-              <div className="text-2xl font-bold text-white">
-                {cpuSensors.length > 0 ? `${Math.max(...cpuSensors.map(s => s.value))}°C` : 'N/A'}
+            ) : (
+              <div className="bg-[#121212] rounded-xl p-4 border border-gray-800">
+                <div className="flex items-center gap-2 text-gray-500 text-sm mb-2">
+                  <Thermometer className="w-4 h-4 text-purple-500" />
+                  T° Max historique
+                </div>
+                <div className="text-2xl font-bold text-white">
+                  {tempStats.maxCpu > 0 ? `${tempStats.maxCpu}°C` : 'N/A'}
+                </div>
+                <div className="text-xs text-gray-500 mt-1">
+                  Sur la période
+                </div>
               </div>
-            </div>
+            )}
           </div>
 
-          {/* Detailed Sensors */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {/* Detailed Sensors - 2 columns layout */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {/* CPU Sensors Detail */}
             {cpuSensors.length > 0 && (
               <div className="bg-[#121212] rounded-xl p-6 border border-gray-800">
@@ -614,6 +689,36 @@ export const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ onBack }) => {
               </div>
             )}
 
+            {/* Fans Detail */}
+            {fans.length > 0 && (
+              <div className="bg-[#121212] rounded-xl p-6 border border-gray-800">
+                <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                  <Fan className="w-5 h-5 text-cyan-500" />
+                  Ventilateurs
+                </h3>
+                <div className="space-y-3">
+                  {fans.map((fan) => (
+                    <div key={fan.id} className="flex justify-between items-center">
+                      <span className="text-gray-400">{fan.name}</span>
+                      <span className="text-cyan-500 font-semibold">{fan.value} T/min</span>
+                    </div>
+                  ))}
+                  {fans.length > 1 && (
+                    <div className="pt-2 border-t border-gray-700">
+                      <div className="flex justify-between items-center">
+                        <span className="text-gray-500 text-sm">Moyenne</span>
+                        <span className="text-white font-semibold">{fanAvgRpm} T/min</span>
+                      </div>
+                    </div>
+                  )}
+                  {/* Add some padding to match CPU card height when there's only 1 fan */}
+                  {fans.length === 1 && cpuSensors.length > 2 && (
+                    <div className="pt-4" />
+                  )}
+                </div>
+              </div>
+            )}
+
             {/* HDD Sensors Detail */}
             {hddSensors.length > 0 && (
               <div className="bg-[#121212] rounded-xl p-6 border border-gray-800">
@@ -646,32 +751,6 @@ export const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ onBack }) => {
                       style={{ width: `${Math.min(100, ((hddAvgTemp || 0) / 60) * 100)}%` }}
                     />
                   </div>
-                </div>
-              </div>
-            )}
-
-            {/* Fans Detail */}
-            {fans.length > 0 && (
-              <div className="bg-[#121212] rounded-xl p-6 border border-gray-800">
-                <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                  <Fan className="w-5 h-5 text-cyan-500" />
-                  Ventilateurs
-                </h3>
-                <div className="space-y-3">
-                  {fans.map((fan) => (
-                    <div key={fan.id} className="flex justify-between items-center">
-                      <span className="text-gray-400">{fan.name}</span>
-                      <span className="text-cyan-500 font-semibold">{fan.value} T/min</span>
-                    </div>
-                  ))}
-                  {fans.length > 1 && (
-                    <div className="pt-2 border-t border-gray-700">
-                      <div className="flex justify-between items-center">
-                        <span className="text-gray-500 text-sm">Moyenne</span>
-                        <span className="text-white font-semibold">{fanAvgRpm} T/min</span>
-                      </div>
-                    </div>
-                  )}
                 </div>
               </div>
             )}

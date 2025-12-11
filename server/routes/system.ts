@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { freeboxApi } from '../services/freeboxApi.js';
 import { rebootScheduler } from '../services/scheduler.js';
 import { asyncHandler } from '../middleware/errorHandler.js';
+import { normalizeSystemInfo } from '../services/apiNormalizer.js';
 
 const router = Router();
 
@@ -26,24 +27,19 @@ router.get('/', asyncHandler(async (_req, res) => {
     const system = systemResult.result as Record<string, unknown>;
 
     // Add model info from api_version endpoint
-    // api_version returns: box_model_name (e.g. "Freebox v9 (r1)")
     system.box_model_name = version.box_model_name || version.box_model || null;
     system.device_name = version.device_name || null;
     system.api_version = version.api_version || null;
 
-    // Debug temperature values (all temp fields)
-    console.log('[System] Full system data keys:', Object.keys(system));
-    console.log('[System] Temperature values:', {
-      temp_cpu0: system.temp_cpu0,
-      temp_cpu1: system.temp_cpu1,
-      temp_cpu2: system.temp_cpu2,
-      temp_cpu3: system.temp_cpu3,
-      temp_cpum: system.temp_cpum,
-      temp_cpub: system.temp_cpub,
-      temp_sw: system.temp_sw,
-      fan_rpm: system.fan_rpm,
-      sensors: system.sensors // v15 might use a sensors array
-    });
+    // Use API normalizer for automatic compatibility
+    // This handles both API v8+ format (sensors/fans arrays) and legacy format (flat fields)
+    // and ensures BOTH formats are available in the response
+    const normalized = normalizeSystemInfo(system);
+
+    // Update the result with normalized data
+    systemResult.result = normalized;
+
+    console.log('[System] Normalized data - sensors:', normalized.sensors?.length || 0, 'fans:', normalized.fans?.length || 0);
   }
 
   res.json(systemResult);

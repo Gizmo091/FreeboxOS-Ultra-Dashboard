@@ -89,6 +89,20 @@ class FreeboxApiService {
         console.log(`[FreeboxAPI] Saved app_token to ${tokenPath}`);
     }
 
+    // Reset/delete app_token (for re-registration when token is invalid)
+    resetToken(): void {
+        const tokenPath = this.getTokenPath();
+        if (fs.existsSync(tokenPath)) {
+            fs.unlinkSync(tokenPath);
+            console.log(`[FreeboxAPI] Deleted token file: ${tokenPath}`);
+        }
+        this.appToken = null;
+        this.sessionToken = null;
+        this.challenge = null;
+        this.permissions = {};
+        console.log('[FreeboxAPI] Token reset - re-registration required');
+    }
+
     // Build full API URL
     private buildUrl(endpoint: string, apiVersion = config.freebox.apiVersion): string {
         // WiFi uses v2 API

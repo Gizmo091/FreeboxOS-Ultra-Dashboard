@@ -25,13 +25,13 @@
 
 ## Compatibilite
 
-| Modele | Support | VMs | WiFi 6E |
-|--------|---------|-----|---------|
-| **Freebox Ultra** | Complet | Oui | Oui |
-| **Freebox Delta** | Complet | Oui | Non |
-| **Freebox Pop** | Complet | Non | Non |
-| **Freebox Mini 4K** | Test | Non | Non |
-| **Freebox Revolution** | Test | Non | Non |
+| Modele | Support | VMs |
+|--------|---------|-----|
+| **Freebox Ultra** | Complet | Oui |
+| **Freebox Delta** | Complet | Oui |
+| **Freebox Pop** | Complet | Non |
+| **Freebox Mini 4K** | Test | Non |
+| **Freebox Revolution** | Test | Non |
 
 ## Apercu
 

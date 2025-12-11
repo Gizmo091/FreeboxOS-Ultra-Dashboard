@@ -254,7 +254,13 @@ export const TrafficHistoryModal: React.FC<TrafficHistoryModalProps> = ({
                         tick={{ fill: '#9ca3af', fontSize: 12 }}
                         tickLine={false}
                         axisLine={false}
-                        tickFormatter={(value) => `${value} KB/s`}
+                        tickFormatter={(value) => {
+                          // Convert KB/s to kb/s (kilobits): KB * 8 = kb
+                          const kbits = value * 8;
+                          if (kbits >= 1000000) return `${(kbits / 1000000).toFixed(1)} Gb/s`;
+                          if (kbits >= 1000) return `${(kbits / 1000).toFixed(1)} Mb/s`;
+                          return `${Math.round(kbits)} kb/s`;
+                        }}
                       />
                       <CartesianGrid strokeDasharray="3 3" stroke="#374151" vertical={false} opacity={0.4} />
                       <Tooltip
@@ -267,8 +273,14 @@ export const TrafficHistoryModal: React.FC<TrafficHistoryModalProps> = ({
                         formatter={(value: number, _name: string, props: { dataKey: string }) => {
                           const label = props.dataKey === 'download' ? 'Descendant' : 'Montant';
                           const color = props.dataKey === 'download' ? '#3b82f6' : '#10b981';
+                          // Convert KB/s to kb/s
+                          const kbits = value * 8;
+                          let formatted: string;
+                          if (kbits >= 1000000) formatted = `${(kbits / 1000000).toFixed(2)} Gb/s`;
+                          else if (kbits >= 1000) formatted = `${(kbits / 1000).toFixed(2)} Mb/s`;
+                          else formatted = `${Math.round(kbits)} kb/s`;
                           return [
-                            <span style={{ color }}>{value} KB/s</span>,
+                            <span style={{ color }}>{formatted}</span>,
                             label
                           ];
                         }}

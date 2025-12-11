@@ -52,11 +52,12 @@ export const useVmStore = create<VmState>((set, get) => ({
           name: vm.name,
           os: vm.os?.toUpperCase() || 'UNKNOWN',
           status: vm.status as VM['status'], // running, stopped, starting, stopping
+          vcpus: vm.vcpus || 1,
           cpuUsage: vm.cpu_usage || 0,
           ramUsage: vm.memory_usage ? vm.memory_usage / (1024 * 1024 * 1024) : 0, // Convert to GB
           ramTotal: vm.memory ? vm.memory / (1024 * 1024 * 1024) : 0, // Convert to GB
           diskUsage: vm.disk_usage ? vm.disk_usage / (1024 * 1024 * 1024) : 0, // Convert to GB
-          diskTotal: 4 // Default 4TB, not available from API
+          diskTotal: vm.disk_size ? vm.disk_size / (1024 * 1024 * 1024) : 0 // Convert to GB
         }));
 
         set({ vms, isLoading: false, hasInitialized: true });

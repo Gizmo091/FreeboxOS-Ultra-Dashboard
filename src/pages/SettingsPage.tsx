@@ -158,7 +158,9 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBack }) => {
     ip_range_end: string;
     netmask: string;
     gateway: string;
-    dns: string;
+    dns: string[];  // Array of DNS servers
+    sticky_assign: boolean;
+    always_broadcast: boolean;
   } | null>(null);
 
   // DHCP static leases
@@ -738,6 +740,59 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBack }) => {
                   value={dhcpConfig.ip_range_end}
                   onChange={(e) => setDhcpConfig({ ...dhcpConfig, ip_range_end: e.target.value })}
                   className="w-40 px-3 py-1.5 bg-[#1a1a1a] border border-gray-700 rounded-lg text-white text-sm font-mono focus:outline-none focus:border-blue-500"
+                />
+              </SettingRow>
+              <SettingRow
+                label="Serveurs DNS"
+                description="Serveurs DNS distribués aux clients DHCP"
+              >
+                <div className="flex flex-col gap-2">
+                  {(dhcpConfig.dns || []).map((dns, index) => (
+                    <div key={index} className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        value={dns}
+                        onChange={(e) => {
+                          const newDns = [...(dhcpConfig.dns || [])];
+                          newDns[index] = e.target.value;
+                          setDhcpConfig({ ...dhcpConfig, dns: newDns });
+                        }}
+                        placeholder="192.168.1.254"
+                        className="w-40 px-3 py-1.5 bg-[#1a1a1a] border border-gray-700 rounded-lg text-white text-sm font-mono focus:outline-none focus:border-blue-500"
+                      />
+                      <button
+                        onClick={() => {
+                          const newDns = (dhcpConfig.dns || []).filter((_, i) => i !== index);
+                          setDhcpConfig({ ...dhcpConfig, dns: newDns });
+                        }}
+                        className="p-1.5 hover:bg-gray-800 rounded text-red-400 hover:text-red-300 transition-colors"
+                        title="Supprimer"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  ))}
+                  {(dhcpConfig.dns || []).length < 3 && (
+                    <button
+                      onClick={() => {
+                        const newDns = [...(dhcpConfig.dns || []), ''];
+                        setDhcpConfig({ ...dhcpConfig, dns: newDns });
+                      }}
+                      className="flex items-center gap-2 px-3 py-1.5 bg-[#1a1a1a] hover:bg-[#252525] border border-gray-700 rounded-lg text-gray-400 hover:text-white text-sm transition-colors w-fit"
+                    >
+                      <Plus size={14} />
+                      Ajouter DNS
+                    </button>
+                  )}
+                </div>
+              </SettingRow>
+              <SettingRow
+                label="Attribution persistante"
+                description="Conserver l'attribution IP entre les redémarrages"
+              >
+                <Toggle
+                  enabled={dhcpConfig.sticky_assign}
+                  onChange={(v) => setDhcpConfig({ ...dhcpConfig, sticky_assign: v })}
                 />
               </SettingRow>
             </Section>

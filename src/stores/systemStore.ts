@@ -40,12 +40,52 @@ export const useSystemStore = create<SystemState>((set, get) => ({
         const { temperatureHistory } = get();
 
         // Build temperature history from real-time data
-        // All Freebox models (Ultra v9, Pop v8, Delta v7, Revolution v6) use the same temperature fields
+        // Compatible with all API versions and all Freebox models:
+        // - API v8+: sensors array (Ultra, Delta, Pop, Revolution)
+        // - Legacy: temp_cpu0-3 (Ultra), temp_cpum/temp_cpub/temp_sw (Delta/Rev/Pop)
+        let cpuM: number | undefined;
+        let sw: number | undefined;
+        let cpuB: number | undefined;
+
+        // First try sensors array (API v8+)
+        if (info.sensors && Array.isArray(info.sensors) && info.sensors.length > 0) {
+          // Find CPU sensors and calculate average
+          const cpuSensors = info.sensors.filter(s =>
+            s.id.startsWith('temp_cpu') || s.id.startsWith('cpu') || s.id === 't1'
+          );
+          if (cpuSensors.length > 0) {
+            cpuM = Math.round(cpuSensors.reduce((sum, s) => sum + s.value, 0) / cpuSensors.length);
+          }
+          // Find switch/secondary sensor
+          const swSensor = info.sensors.find(s =>
+            s.id === 'temp_sw' || s.id === 'sw' || s.id === 't2'
+          );
+          if (swSensor) sw = swSensor.value;
+          // Find CPU box sensor
+          const cpubSensor = info.sensors.find(s => s.id === 'temp_cpub' || s.id === 'cpub');
+          if (cpubSensor) cpuB = cpubSensor.value;
+        }
+
+        // Fallback to legacy flat fields if sensors array didn't provide data
+        if (cpuM == null) {
+          if (info.temp_cpu0 != null) {
+            // Ultra: average of 4 CPU cores
+            const temps = [info.temp_cpu0, info.temp_cpu1, info.temp_cpu2, info.temp_cpu3]
+              .filter((t): t is number => t != null);
+            cpuM = temps.length > 0 ? Math.round(temps.reduce((a, b) => a + b, 0) / temps.length) : undefined;
+          } else if (info.temp_cpum != null) {
+            // Delta/Revolution: temp_cpum field
+            cpuM = info.temp_cpum;
+          }
+        }
+        if (sw == null) sw = info.temp_sw;
+        if (cpuB == null) cpuB = info.temp_cpub;
+
         const newPoint: TemperatureHistoryPoint = {
           time: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
-          cpuM: info.temp_cpum,  // CPU main temperature
-          cpuB: info.temp_cpub,  // CPU box temperature
-          sw: info.temp_sw       // Switch temperature
+          cpuM,   // CPU average or main temperature
+          cpuB,   // CPU box temperature
+          sw      // Switch temperature
         };
 
         // Keep last 60 points (about 30 minutes at 30s polling interval)

@@ -298,11 +298,12 @@ export interface VirtualMachine {
   memory: number;
   disk_path: string;
   disk_type: string;
+  disk_size?: number;      // Total disk size in bytes
   enable_screen: boolean;
   // Extended stats (may not always be available)
-  cpu_usage?: number;
-  memory_usage?: number;
-  disk_usage?: number;
+  cpu_usage?: number;      // CPU usage percentage (0-100)
+  memory_usage?: number;   // Memory usage in bytes
+  disk_usage?: number;     // Disk usage in bytes
 }
 
 // TV Channel types

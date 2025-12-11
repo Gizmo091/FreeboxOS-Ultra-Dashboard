@@ -103,10 +103,20 @@ export const useConnectionStore = create<ConnectionState>((set, get) => ({
         const data = response.result.data;
         console.log('[ConnectionStore] Raw data points:', data.length, 'first:', JSON.stringify(data[0]));
 
+        // RRD 'net' database field names vary by API version and model:
+        // API v4+: rate_down, rate_up (bytes/s)
+        // API v8+: bw_down, bw_up (bytes/s)
+        // Some versions: down, up (bytes/s)
+        // Some versions: rx_rate, tx_rate (might be different scale)
         const extendedHistory: NetworkStat[] = data.map((point) => {
-          // Try different field names: rate_down/rate_up or bw_down/bw_up
-          const download = point.rate_down ?? point.bw_down ?? 0;
-          const upload = point.rate_up ?? point.bw_up ?? 0;
+          // Try all known field name variations for download
+          let download = point.rate_down ?? point.bw_down ?? point.down ?? point.rx_rate ?? 0;
+          // Try all known field name variations for upload
+          let upload = point.rate_up ?? point.bw_up ?? point.up ?? point.tx_rate ?? 0;
+
+          // Ensure we have numbers
+          download = typeof download === 'number' ? download : 0;
+          upload = typeof upload === 'number' ? upload : 0;
 
           return {
             time: new Date(point.time * 1000).toLocaleTimeString('fr-FR', {
@@ -156,14 +166,15 @@ export const useConnectionStore = create<ConnectionState>((set, get) => ({
         console.log('[ConnectionStore] Temperature data points:', response.result.data.length, 'first:', JSON.stringify(response.result.data[0]));
         // RRD temp database fields vary by model:
         // Ultra v9: temp_cpu0, temp_cpu1, temp_cpu2, temp_cpu3
-        // Other models: cpum, cpub, sw
+        // Delta: cpum, cpub, sw, fan_speed
+        // Pop: t1 (or possibly cpum)
+        // Revolution: cpum, cpub, sw
         const temperatureHistory = response.result.data.map((point: Record<string, unknown>) => {
-          // Ultra v9: average of 4 CPU cores
-          const hasUltraTemp = point.temp_cpu0 != null;
           let cpuM: number | undefined;
 
-          if (hasUltraTemp) {
-            // Ultra: average of temp_cpu0-3
+          // Try different CPU temperature field names
+          if (point.temp_cpu0 != null) {
+            // Ultra v9: average of 4 CPU cores
             const temps = [
               point.temp_cpu0 as number,
               point.temp_cpu1 as number,
@@ -171,9 +182,22 @@ export const useConnectionStore = create<ConnectionState>((set, get) => ({
               point.temp_cpu3 as number
             ].filter(t => t != null);
             cpuM = temps.length > 0 ? Math.round(temps.reduce((a, b) => a + b, 0) / temps.length) : undefined;
-          } else {
-            // Other models: use cpum
-            cpuM = point.cpum as number | undefined;
+          } else if (point.cpum != null) {
+            // Delta/Revolution: cpum field
+            cpuM = point.cpum as number;
+          } else if (point.t1 != null) {
+            // Pop: t1 field (main temperature sensor)
+            cpuM = point.t1 as number;
+          } else if (point.temp != null) {
+            // Fallback: generic temp field
+            cpuM = point.temp as number;
+          }
+
+          // Try different switch/other temperature field names
+          let sw: number | undefined = point.sw as number | undefined;
+          if (sw == null && point.t2 != null) {
+            // Pop: t2 might be another sensor
+            sw = point.t2 as number;
           }
 
           return {
@@ -182,8 +206,8 @@ export const useConnectionStore = create<ConnectionState>((set, get) => ({
               minute: '2-digit'
             }),
             cpuM,  // CPU main or average of CPU cores
-            cpuB: point.cpub as number | undefined,  // CPU box (other models)
-            sw: point.sw as number | undefined       // Switch (other models)
+            cpuB: point.cpub as number | undefined,  // CPU box (Delta/Revolution)
+            sw     // Switch (Delta/Revolution) or secondary temp (Pop)
           };
         });
         console.log('[ConnectionStore] Processed temperature:', temperatureHistory.length, 'points, sample:', temperatureHistory[0]);

@@ -117,4 +117,28 @@ router.get('/url', asyncHandler(async (_req, res) => {
   });
 }));
 
+// POST /api/auth/reset - Reset token (for re-registration when token is invalid)
+router.post('/reset', asyncHandler(async (_req, res) => {
+  // Logout first if logged in
+  if (freeboxApi.isLoggedIn()) {
+    await freeboxApi.logout();
+  }
+
+  // Reset the token
+  freeboxApi.resetToken();
+
+  // Clear cached capabilities
+  modelDetection.clearCache();
+
+  // Notify WebSocket service
+  connectionWebSocket.onLogout();
+
+  res.json({
+    success: true,
+    result: {
+      message: 'Token reset successful. Please re-register the application.'
+    }
+  });
+}));
+
 export default router;
