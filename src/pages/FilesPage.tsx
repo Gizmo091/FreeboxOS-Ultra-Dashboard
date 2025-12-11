@@ -1049,7 +1049,9 @@ export const FilesPage: React.FC<FilesPageProps> = ({ onBack }) => {
                 </button>
                 <button
                   onClick={() => setShowNewFolderModal(true)}
-                  className="flex items-center gap-2 px-3 py-1.5 text-xs bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition-colors"
+                  disabled={currentPath === '/'}
+                  title={currentPath === '/' ? 'Impossible de créer un dossier à la racine' : 'Nouveau dossier'}
+                  className="flex items-center gap-2 px-3 py-1.5 text-xs bg-blue-600 hover:bg-blue-500 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-lg transition-colors"
                 >
                   <FolderPlus size={14} />
                   Nouveau dossier
